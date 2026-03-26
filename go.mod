@@ -1,4 +1,4 @@
-module nossqlx
+module github.com/raaaaaaaay86/nossqlx
 
 go 1.25.0
 
