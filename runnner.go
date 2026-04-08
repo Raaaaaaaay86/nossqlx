@@ -24,11 +24,16 @@ type PostgreQueryer interface {
 
 type MySQLRunner interface {
 	MySQLExecer
+	MySQLPreparer
 	MySQLQueryer
 }
 
 type MySQLExecer interface {
 	ExecContext(ctx context.Context, sql string, arguments ...any) (sql.Result, error)
+}
+
+type MySQLPreparer interface {
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
 }
 
 type MySQLQueryer interface {
