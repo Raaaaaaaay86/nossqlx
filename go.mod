@@ -10,6 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/ngrok/sqlmw v0.0.0-20220520173518-97c9c04efc79 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

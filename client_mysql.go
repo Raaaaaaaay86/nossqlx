@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/xerrors"
 )
@@ -51,11 +50,7 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, func(), error)
 	ctxValue := ctx.Value(transactionCtx{})
 
 	if ctxValue == nil {
-		conn, err := db.Conn(ctx)
-		if err != nil {
-			return nil, func() {}, err
-		}
-		return conn, func() { conn.Close() }, nil
+		return db, func() {}, nil
 	}
 
 	transaction, ok := ctxValue.(*Transaction)
@@ -89,4 +84,3 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, func(), error)
 
 	return tx, func() {}, nil
 }
-

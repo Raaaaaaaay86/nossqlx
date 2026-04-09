@@ -57,11 +57,7 @@ func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, func(), 
 	ctxValue := ctx.Value(transactionCtx{})
 
 	if ctxValue == nil {
-		conn, err := pool.Acquire(ctx)
-		if err != nil {
-			return nil, func() {}, err
-		}
-		return conn.Conn(), func() { conn.Release() }, nil
+		return pool, func(){}, nil
 	}
 
 	transaction, ok := ctxValue.(*Transaction)
