@@ -41,28 +41,28 @@ func (s *PostgreClient) Pool() *pgxpool.Pool {
 	return s.pool
 }
 
-func (s *PostgreClient) Session(c context.Context) (context.Context, context.CancelFunc, PostgreRunner, func(), error) {
+func (s *PostgreClient) Session(c context.Context) (context.Context, context.CancelFunc, PostgreRunner, error) {
 	ctx, cancel := context.WithTimeout(c, s.sqlTimeout)
 
-	runner, release, err := getPgConn(ctx, s.pool)
+	runner, err := getPgConn(ctx, s.pool)
 
-	return ctx, cancel, runner, release, err
+	return ctx, cancel, runner, err
 }
 
-func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, func(), error) {
+func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, error) {
 	if pool == nil {
-		return nil, func() {}, xerrors.Errorf("missing database instance *pgxpool.Pool")
+		return nil, xerrors.Errorf("missing database instance *pgxpool.Pool")
 	}
 
 	ctxValue := ctx.Value(transactionCtx{})
 
 	if ctxValue == nil {
-		return pool, func(){}, nil
+		return pool, nil
 	}
 
 	transaction, ok := ctxValue.(*Transaction)
 	if !ok {
-		return nil, func() {}, xerrors.Errorf("unexpected type: %t", ctxValue)
+		return nil, xerrors.Errorf("unexpected type: %t", ctxValue)
 	}
 
 	transaction.Lock.Lock()
@@ -70,7 +70,7 @@ func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, func(), 
 	if transaction.Commit == nil {
 		sqlxTx, err := pool.Begin(ctx)
 		if err != nil {
-			return nil, func() {}, xerrors.Errorf("begin transaction failed: %w", err)
+			return nil, xerrors.Errorf("begin transaction failed: %w", err)
 		}
 
 		transaction.Commit = func(ctx context.Context) error {
@@ -81,13 +81,13 @@ func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, func(), 
 		}
 		transaction.Tx = sqlxTx
 
-		return sqlxTx, func() {}, nil
+		return sqlxTx, nil
 	}
 
 	tx, ok := transaction.Tx.(pgx.Tx)
 	if !ok {
-		return nil, func() {}, nil
+		return nil, nil
 	}
 
-	return tx, func() {}, nil
+	return tx, nil
 }

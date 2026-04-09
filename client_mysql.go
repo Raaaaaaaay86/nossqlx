@@ -34,28 +34,28 @@ func (s *MySQLClient) DB() *sqlx.DB {
 	return s.db
 }
 
-func (s *MySQLClient) Session(c context.Context) (context.Context, context.CancelFunc, MySQLRunner, func(), error) {
+func (s *MySQLClient) Session(c context.Context) (context.Context, context.CancelFunc, MySQLRunner, error) {
 	ctx, cancel := context.WithTimeout(c, s.sqlTimeout)
 
-	runner, release, err := getMySQLConn(ctx, s.db)
+	runner, err := getMySQLConn(ctx, s.db)
 
-	return ctx, cancel, runner, release, err
+	return ctx, cancel, runner, err
 }
 
-func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, func(), error) {
+func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, error) {
 	if db == nil {
-		return nil, func() {}, xerrors.Errorf("missing database instance *sqlx.DB")
+		return nil, xerrors.Errorf("missing database instance *sqlx.DB")
 	}
 
 	ctxValue := ctx.Value(transactionCtx{})
 
 	if ctxValue == nil {
-		return db, func() {}, nil
+		return db, nil
 	}
 
 	transaction, ok := ctxValue.(*Transaction)
 	if !ok {
-		return nil, func() {}, xerrors.Errorf("unexpected type: %t", ctxValue)
+		return nil, xerrors.Errorf("unexpected type: %t", ctxValue)
 	}
 
 	transaction.Lock.Lock()
@@ -63,7 +63,7 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, func(), error)
 	if transaction.Commit == nil {
 		tx, err := db.BeginTxx(ctx, nil)
 		if err != nil {
-			return nil, func() {}, xerrors.Errorf("begin transaction failed: %w", err)
+			return nil, xerrors.Errorf("begin transaction failed: %w", err)
 		}
 
 		transaction.Commit = func(ctx context.Context) error {
@@ -74,13 +74,13 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, func(), error)
 		}
 		transaction.Tx = tx
 
-		return tx, func() {}, nil
+		return tx, nil
 	}
 
 	tx, ok := transaction.Tx.(*sqlx.Tx)
 	if !ok {
-		return nil, func() {}, xerrors.Errorf("unexpected transaction type: %T", transaction.Tx)
+		return nil, xerrors.Errorf("unexpected transaction type: %T", transaction.Tx)
 	}
 
-	return tx, func() {}, nil
+	return tx, nil
 }

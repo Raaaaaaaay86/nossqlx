@@ -69,10 +69,9 @@ func (s *PostgreClientTestSuite) TestPool() {
 
 // TestSession make sure to acquire SQL execution session
 func (s *PostgreClientTestSuite) TestSession() {
-	ctx, cancel, runner, release, err := s.client.Session(context.Background())
+	ctx, cancel, runner, err := s.client.Session(context.Background())
 	assert.NoError(s.T(), err)
 	defer cancel()
-	defer release()
 
 	_, err = runner.Exec(ctx, "INSERT INTO test_table (name) VALUES ($1)", "test_session")
 	assert.NoError(s.T(), err)
@@ -97,12 +96,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 	t.Run("Non Nested Transaction", func(t *testing.T) {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
-			innerCtx, cancel, runner, release, err := s.client.Session(ctx)
+			innerCtx, cancel, runner, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			defer release()
 
 			_, err = runner.Exec(innerCtx, "INSERT INTO test_table (name) VALUES ($1)", "non-nested")
 			return err
@@ -119,12 +117,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 	t.Run("Non Nested Transaction Rollback", func(t *testing.T) {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
-			innerCtx, cancel, runner, release, err := s.client.Session(ctx)
+			innerCtx, cancel, runner, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			defer release()
 
 			_, err = runner.Exec(innerCtx, "INSERT INTO test_table (name) VALUES ($1)", "rollback")
 			if err != nil {
@@ -145,12 +142,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, cancel1, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, cancel1, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
 			defer cancel1()
-			defer release1()
 
 			_, err = runner1.Exec(innerCtx1, "INSERT INTO test_table (name) VALUES ($1)", "nested-1")
 			if err != nil {
@@ -159,12 +155,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 
 			return BeginTx(ctx, func(ctx context.Context) error {
 				// Second Level
-				innerCtx2, cancel2, runner2, release2, err := s.client.Session(ctx)
+				innerCtx2, cancel2, runner2, err := s.client.Session(ctx)
 				if err != nil {
 					return err
 				}
 				defer cancel2()
-				defer release2()
 
 				_, err = runner2.Exec(innerCtx2, "INSERT INTO test_table (name) VALUES ($1)", "nested-2")
 				return err
@@ -183,12 +178,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, cancel1, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, cancel1, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
 			defer cancel1()
-			defer release1()
 
 			_, err = runner1.Exec(innerCtx1, "INSERT INTO test_table (name) VALUES ($1)", "nested-rollback-1")
 			if err != nil {
@@ -211,12 +205,11 @@ func (s *PostgreClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, cancel1, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, cancel1, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
 			defer cancel1()
-			defer release1()
 
 			_, err = runner1.Exec(innerCtx1, "INSERT INTO test_table (name) VALUES ($1)", "nested-rollback-1")
 			if err != nil {
