@@ -84,10 +84,9 @@ func (s *MySQLClientTestSuite) TestSession() {
 	if s.client == nil {
 		s.T().Skip("MySQL not available")
 	}
-	ctx, cancel, runner, release, err := s.client.Session(context.Background())
+	ctx, cancel, runner, err := s.client.Session(context.Background())
 	assert.NoError(s.T(), err)
 	defer cancel()
-	defer release()
 
 	_, err = runner.ExecContext(ctx, "INSERT INTO test_table (name) VALUES (?)", "test_session")
 	assert.NoError(s.T(), err)
@@ -115,11 +114,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 	t.Run("Non Nested Transaction", func(t *testing.T) {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
-			innerCtx, _, runner, release, err := s.client.Session(ctx)
+			innerCtx, _, runner, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
-			defer release()
 
 			_, err = runner.ExecContext(innerCtx, "INSERT INTO test_table (name) VALUES (?)", "non-nested")
 			return err
@@ -136,11 +134,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 	t.Run("Non Nested Transaction Rollback", func(t *testing.T) {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
-			innerCtx, _, runner, release, err := s.client.Session(ctx)
+			innerCtx, _, runner, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
-			defer release()
 
 			_, err = runner.ExecContext(innerCtx, "INSERT INTO test_table (name) VALUES (?)", "rollback")
 			if err != nil {
@@ -161,11 +158,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, _, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, _, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
-			defer release1()
 
 			_, err = runner1.ExecContext(innerCtx1, "INSERT INTO test_table (name) VALUES (?)", "nested-1")
 			if err != nil {
@@ -174,11 +170,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 
 			return BeginTx(ctx, func(ctx context.Context) error {
 				// Second Level
-				innerCtx2, _, runner2, release2, err := s.client.Session(ctx)
+				innerCtx2, _, runner2, err := s.client.Session(ctx)
 				if err != nil {
 					return err
 				}
-				defer release2()
 
 				_, err = runner2.ExecContext(innerCtx2, "INSERT INTO test_table (name) VALUES (?)", "nested-2")
 				return err
@@ -197,11 +192,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, _, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, _, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
-			defer release1()
 
 			_, err = runner1.ExecContext(innerCtx1, "INSERT INTO test_table (name) VALUES (?)", "nested-rollback-1")
 			if err != nil {
@@ -224,11 +218,10 @@ func (s *MySQLClientTestSuite) TestTransaction() {
 		truncate()
 		err := BeginTx(context.Background(), func(ctx context.Context) error {
 			// First Level
-			innerCtx1, _, runner1, release1, err := s.client.Session(ctx)
+			innerCtx1, _, runner1, err := s.client.Session(ctx)
 			if err != nil {
 				return err
 			}
-			defer release1()
 
 			_, err = runner1.ExecContext(innerCtx1, "INSERT INTO test_table (name) VALUES (?)", "nested-rollback-1")
 			if err != nil {
