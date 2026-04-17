@@ -7,6 +7,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/uptrace/opentelemetry-go-extra/otelsql"
+	"github.com/uptrace/opentelemetry-go-extra/otelsqlx"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"golang.org/x/xerrors"
 )
 
@@ -18,7 +21,7 @@ type MySQLClient struct {
 func NewSqlxMySQLClient(c ClientConfig) (*MySQLClient, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", c.Username, c.Password, c.Host, c.Port, c.Database)
 
-	db, err := sqlx.Connect("mysql", dsn)
+	db, err := conn("mysql", dsn, c.TracerProvider != nil)
 	if err != nil {
 		return nil, xerrors.Errorf("connect to mysql failed: %w", err)
 	}
@@ -29,6 +32,19 @@ func NewSqlxMySQLClient(c ClientConfig) (*MySQLClient, error) {
 	}
 
 	return instance, nil
+}
+
+func conn(driverName string, dsn string, useOtel bool) (*sqlx.DB, error) {
+	if !useOtel {
+		return sqlx.Connect(driverName, dsn)
+	}
+
+	options := []otelsql.Option{
+		otelsql.WithAttributes(
+			semconv.DBSystemMySQL,
+		),
+	}
+	return otelsqlx.Connect(driverName, dsn, options...)
 }
 
 func (s *MySQLClient) DB() *sqlx.DB {
