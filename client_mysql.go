@@ -9,7 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/uptrace/opentelemetry-go-extra/otelsql"
 	"github.com/uptrace/opentelemetry-go-extra/otelsqlx"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"golang.org/x/xerrors"
 )
 
@@ -41,7 +41,7 @@ func conn(driverName string, dsn string, useOtel bool) (*sqlx.DB, error) {
 
 	options := []otelsql.Option{
 		otelsql.WithAttributes(
-			semconv.DBSystemMySQL,
+			semconv.DBSystemNameMySQL,
 		),
 	}
 	return otelsqlx.Connect(driverName, dsn, options...)
