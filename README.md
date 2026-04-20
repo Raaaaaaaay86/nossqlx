@@ -131,4 +131,4 @@ nossqlx.BeginTx(ctx, func(ctx context.Context) error {
 func BeginTx(ctx context.Context, fn func(ctx context.Context) error) error
 ```
 
-Executes `fn` inside a database transaction. Commits on success, rolls back on error. 
+Executes `fn` inside a database transaction. Commits on success, rolls back on error.  
