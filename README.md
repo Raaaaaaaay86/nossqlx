@@ -1,8 +1,14 @@
-# nossqlx
+<h1 align="center"> nossqlx </h1>
 
-`nossqlx` is an extended SQL client for the nos ecosystem. It wraps [pgx](https://github.com/jackc/pgx) (PostgreSQL) and [sqlx](https://github.com/jmoiron/sqlx) (MySQL) and provides a unified `Session` / `BeginTx` API that transparently promotes a plain connection into a transaction when one is already in flight on the context.
+<p>
+nossqlx is an extended SQL client for the nos ecosystem. It wraps <a href="https://github.com/jackc/pgx">pgx</a> (PostgreSQL) and <a href="https://github.com/jmoiron/sqlx">sqlx</a> (MySQL) and provides a unified Session / BeginTx API that transparently promotes a plain connection into a transaction when one is already in flight on the context.
+</p>
 
-## Installation
+<p align="center">
+  <a href="README.zh-TW.md">中文</a>
+</p>
+
+## Install
 
 ```bash
 go get github.com/raaaaaaaay86/nossqlx
@@ -131,4 +137,4 @@ nossqlx.BeginTx(ctx, func(ctx context.Context) error {
 func BeginTx(ctx context.Context, fn func(ctx context.Context) error) error
 ```
 
-Executes `fn` inside a database transaction. Commits on success, rolls back on error.  
+Executes `fn` inside a database transaction. Commits on success, rolls back on error.

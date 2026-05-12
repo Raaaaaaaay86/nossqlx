@@ -1,6 +1,12 @@
-# nossqlx
+<h1 align="center"> nossqlx </h1>
 
-`nossqlx` 是 nos 生態系的 SQL 客戶端擴充套件。它封裝了 [pgx](https://github.com/jackc/pgx)（PostgreSQL）與 [sqlx](https://github.com/jmoiron/sqlx)（MySQL），並提供統一的 `Session` / `BeginTx` API，能在 context 中已有進行中的事務時，自動將普通連線提升為同一事務連線。
+<p>
+nossqlx 是 nos 生態系的 SQL 客戶端擴充套件。它封裝了 <a href="https://github.com/jackc/pgx">pgx</a>（PostgreSQL）與 <a href="https://github.com/jmoiron/sqlx">sqlx</a>（MySQL），並提供統一的 Session / BeginTx API，能在 context 中已有進行中的事務時，自動將普通連線提升為同一事務連線。
+</p>
+
+<p align="center">
+  <a href="README.md">English</a>
+</p>
 
 ## 安裝
 
