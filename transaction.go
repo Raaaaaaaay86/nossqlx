@@ -18,16 +18,18 @@ type Transaction struct {
 	StartAt  time.Time
 	Lock     sync.Mutex
 	Tx       any
+	rootCtx  context.Context
 }
 
 func BeginTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	transaction, ok := ctx.Value(transactionCtx{}).(*Transaction)
 	if !ok {
-		transaction = &Transaction{StartAt: time.Now()}
+		transaction = &Transaction{StartAt: time.Now(), rootCtx: ctx}
 	} else {
 		transaction = &Transaction{
 			Level:   transaction.Level + 1,
 			StartAt: time.Now(),
+			rootCtx: ctx,
 		}
 	}
 

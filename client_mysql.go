@@ -80,7 +80,7 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, error) {
 	transaction.Lock.Lock()
 	defer transaction.Lock.Unlock()
 	if transaction.Commit == nil {
-		tx, err := db.BeginTxx(ctx, nil)
+		tx, err := db.BeginTxx(transaction.rootCtx, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("begin transaction failed: %w", err)
 		}

@@ -68,7 +68,7 @@ func getPgConn(ctx context.Context, pool *pgxpool.Pool) (PostgreRunner, error) {
 	transaction.Lock.Lock()
 	defer transaction.Lock.Unlock()
 	if transaction.Commit == nil {
-		sqlxTx, err := pool.Begin(ctx)
+		sqlxTx, err := pool.Begin(transaction.rootCtx)
 		if err != nil {
 			return nil, xerrors.Errorf("begin transaction failed: %w", err)
 		}
