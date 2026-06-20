@@ -20,7 +20,7 @@ type PostgreClient struct {
 }
 
 func NewSqlxPostgreClient(c ClientConfig) (*PostgreClient, error) {
-	master, err := newPgPool(c.Username, c.Password, c.Host, c.Port, c.Database)
+	master, err := newPgPool(c.Username, c.Password, c.Host, c.Port, c.Database, c.Pool)
 	if err != nil {
 		return nil, xerrors.Errorf("connect to master postgresql failed: %w", err)
 	}
@@ -34,7 +34,7 @@ func NewSqlxPostgreClient(c ClientConfig) (*PostgreClient, error) {
 		if password == "" {
 			password = c.Password
 		}
-		pool, err := newPgPool(username, password, rc.Host, rc.Port, c.Database)
+		pool, err := newPgPool(username, password, rc.Host, rc.Port, c.Database, c.Pool)
 		if err != nil {
 			return nil, xerrors.Errorf("connect to replica[%d] postgresql failed: %w", i, err)
 		}
@@ -48,11 +48,23 @@ func NewSqlxPostgreClient(c ClientConfig) (*PostgreClient, error) {
 	}, nil
 }
 
-func newPgPool(username, password, host string, port int, database string) (*pgxpool.Pool, error) {
+func newPgPool(username, password, host string, port int, database string, pc PoolConfig) (*pgxpool.Pool, error) {
 	address := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", username, password, host, port, database)
 	config, err := pgxpool.ParseConfig(address)
 	if err != nil {
 		return nil, xerrors.Errorf("parse postgresql config failed: %w", err)
+	}
+	if pc.MaxConns > 0 {
+		config.MaxConns = pc.MaxConns
+	}
+	if pc.MinConns > 0 {
+		config.MinConns = pc.MinConns
+	}
+	if pc.MaxConnLifetime > 0 {
+		config.MaxConnLifetime = pc.MaxConnLifetime
+	}
+	if pc.MaxConnIdleTime > 0 {
+		config.MaxConnIdleTime = pc.MaxConnIdleTime
 	}
 	pool, err := pgxpool.NewWithConfig(context.TODO(), config)
 	if err != nil {

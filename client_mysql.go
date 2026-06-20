@@ -30,6 +30,7 @@ func NewSqlxMySQLClient(c ClientConfig) (*MySQLClient, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("connect to master mysql failed: %w", err)
 	}
+	applyMySQLPoolConfig(master, c.Pool)
 
 	replicas := make([]*sqlx.DB, 0, len(c.Replicas))
 	for i, rc := range c.Replicas {
@@ -44,6 +45,7 @@ func NewSqlxMySQLClient(c ClientConfig) (*MySQLClient, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("connect to replica[%d] mysql failed: %w", i, err)
 		}
+		applyMySQLPoolConfig(db, c.Pool)
 		replicas = append(replicas, db)
 	}
 
@@ -109,6 +111,21 @@ func getMySQLConn(ctx context.Context, master *sqlx.DB, replica *sqlx.DB) (MySQL
 	}
 
 	return &mysqlSmartRunner{master: master, replica: replica}, nil
+}
+
+func applyMySQLPoolConfig(db *sqlx.DB, pc PoolConfig) {
+	if pc.MaxConns > 0 {
+		db.SetMaxOpenConns(int(pc.MaxConns))
+	}
+	if pc.MinConns > 0 {
+		db.SetMaxIdleConns(int(pc.MinConns))
+	}
+	if pc.MaxConnLifetime > 0 {
+		db.SetConnMaxLifetime(pc.MaxConnLifetime)
+	}
+	if pc.MaxConnIdleTime > 0 {
+		db.SetConnMaxIdleTime(pc.MaxConnIdleTime)
+	}
 }
 
 func joinOrBeginMySQLTx(transaction *Transaction, db *sqlx.DB) (MySQLRunner, error) {
