@@ -14,4 +14,14 @@ type ClientConfig struct {
 	Password       string
 	SQLTimeout     time.Duration
 	TracerProvider trace.TracerProvider
+	Replicas       []ReplicaConfig
+}
+
+// ReplicaConfig holds connection info for a read replica.
+// Username and Password fall back to ClientConfig values when empty.
+type ReplicaConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
 }

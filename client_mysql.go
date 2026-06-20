@@ -3,6 +3,7 @@ package nossqlx
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,24 +16,46 @@ import (
 )
 
 type MySQLClient struct {
-	db         *sqlx.DB
+	master     *sqlx.DB
+	replicas   []*sqlx.DB
+	replicaIdx atomic.Uint64
 	sqlTimeout time.Duration
 }
 
 func NewSqlxMySQLClient(c ClientConfig) (*MySQLClient, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", c.Username, c.Password, c.Host, c.Port, c.Database)
+	useOtel := c.TracerProvider != nil
 
-	db, err := conn("mysql", dsn, c.TracerProvider != nil)
+	masterDSN := mysqlDSN(c.Username, c.Password, c.Host, c.Port, c.Database)
+	master, err := conn("mysql", masterDSN, useOtel)
 	if err != nil {
-		return nil, xerrors.Errorf("connect to mysql failed: %w", err)
+		return nil, xerrors.Errorf("connect to master mysql failed: %w", err)
 	}
 
-	instance := &MySQLClient{
-		db:         db,
+	replicas := make([]*sqlx.DB, 0, len(c.Replicas))
+	for i, rc := range c.Replicas {
+		username, password := rc.Username, rc.Password
+		if username == "" {
+			username = c.Username
+		}
+		if password == "" {
+			password = c.Password
+		}
+		db, err := conn("mysql", mysqlDSN(username, password, rc.Host, rc.Port, c.Database), useOtel)
+		if err != nil {
+			return nil, xerrors.Errorf("connect to replica[%d] mysql failed: %w", i, err)
+		}
+		replicas = append(replicas, db)
+	}
+
+	return &MySQLClient{
+		master:     master,
+		replicas:   replicas,
 		sqlTimeout: c.SQLTimeout,
-	}
+	}, nil
+}
 
-	return instance, nil
+func mysqlDSN(username, password, host string, port int, database string) string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", username, password, host, port, database)
 }
 
 func conn(driverName string, dsn string, useOtel bool) (*sqlx.DB, error) {
@@ -50,41 +73,53 @@ func conn(driverName string, dsn string, useOtel bool) (*sqlx.DB, error) {
 }
 
 func (s *MySQLClient) DB() *sqlx.DB {
-	return s.db
+	return s.master
 }
 
 func (s *MySQLClient) Session(c context.Context) (context.Context, context.CancelFunc, MySQLRunner, error) {
 	ctx, cancel := context.WithTimeout(c, s.sqlTimeout)
-
-	runner, err := getMySQLConn(ctx, s.db)
-
+	runner, err := getMySQLConn(ctx, s.master, s.nextReplica())
 	return ctx, cancel, runner, err
 }
 
-func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, error) {
-	if db == nil {
+func (s *MySQLClient) nextReplica() *sqlx.DB {
+	if len(s.replicas) == 0 {
+		return nil
+	}
+
+	idx := s.replicaIdx.Add(1) - 1
+	return s.replicas[idx%uint64(len(s.replicas))]
+}
+
+func getMySQLConn(ctx context.Context, master *sqlx.DB, replica *sqlx.DB) (MySQLRunner, error) {
+	if master == nil {
 		return nil, xerrors.Errorf("missing database instance *sqlx.DB")
 	}
 
-	ctxValue := ctx.Value(transactionCtx{})
-
-	if ctxValue == nil {
-		return db, nil
+	if ctxValue := ctx.Value(transactionCtx{}); ctxValue != nil {
+		transaction, ok := ctxValue.(*Transaction)
+		if !ok {
+			return nil, xerrors.Errorf("unexpected type: %T", ctxValue)
+		}
+		return joinOrBeginMySQLTx(transaction, master)
 	}
 
-	transaction, ok := ctxValue.(*Transaction)
-	if !ok {
-		return nil, xerrors.Errorf("unexpected type: %t", ctxValue)
+	if routeFromCtx(ctx) == routeMaster {
+		return master, nil
 	}
 
+	return &mysqlSmartRunner{master: master, replica: replica}, nil
+}
+
+func joinOrBeginMySQLTx(transaction *Transaction, db *sqlx.DB) (MySQLRunner, error) {
 	transaction.Lock.Lock()
 	defer transaction.Lock.Unlock()
+
 	if transaction.Commit == nil {
 		tx, err := db.BeginTxx(transaction.rootCtx, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("begin transaction failed: %w", err)
 		}
-
 		transaction.Commit = func(ctx context.Context) error {
 			return tx.Commit()
 		}
@@ -92,7 +127,6 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, error) {
 			return tx.Rollback()
 		}
 		transaction.Tx = tx
-
 		return tx, nil
 	}
 
@@ -100,6 +134,5 @@ func getMySQLConn(ctx context.Context, db *sqlx.DB) (MySQLRunner, error) {
 	if !ok {
 		return nil, xerrors.Errorf("unexpected transaction type: %T", transaction.Tx)
 	}
-
 	return tx, nil
 }
