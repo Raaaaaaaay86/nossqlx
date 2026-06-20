@@ -38,12 +38,12 @@ func BeginTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	if err := fn(ctx); err != nil {
 		if transaction.Rollback != nil {
 			if rollbackErr := transaction.Rollback(ctx); rollbackErr != nil {
-				slog.Error("transaction rollback failed", "error", rollbackErr)
+				slog.ErrorContext(ctx, "transaction rollback failed", "error", rollbackErr)
 			} else {
-				slog.Debug("transaction rollback succeed", "error", err)
+				slog.DebugContext(ctx, "transaction rollback succeed", "error", err)
 			}
 		} else {
-			slog.Error("transaction failed and has no rollback callback function", "error", err)
+			slog.ErrorContext(ctx, "transaction failed and has no rollback callback function", "error", err)
 		}
 
 		return xerrors.Errorf("transaction failed: %w", err)
@@ -51,13 +51,13 @@ func BeginTx(ctx context.Context, fn func(ctx context.Context) error) error {
 
 	if transaction.Commit != nil {
 		if err := transaction.Commit(ctx); err != nil {
-			slog.Error("transaction commit failed", "error", err)
+			slog.ErrorContext(ctx, "transaction commit failed", "error", err)
 			return err
 		} else {
-			slog.Debug("transaction commit")
+			slog.DebugContext(ctx, "transaction commit")
 		}
 	} else {
-		slog.Error("transaction has no rollback callback function")
+		slog.ErrorContext(ctx, "transaction has no rollback callback function")
 
 		return xerrors.Errorf("missing commit callback")
 	}
